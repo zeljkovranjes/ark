@@ -1,102 +1,152 @@
 # Ark
-A full-stack monolithic application that heavily emphasizes its (IAM) solution. Initially, it was supposed to be closed source because it was going to be used for a side project, but I decided to release it to the public for personal reasons. Note: it's missing some fundamental things, so it's not ready for production use yet.
-<br><br>
-Technically, it is not a full stack just yet, I haven't wrote the frontend yet.
-<br /><br />
-![Version](https://img.shields.io/badge/ark-0.1.0-orange)
-![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/w/notpointless/ark/main)
+[<img alt="github" src="https://img.shields.io/badge/%20GitHub-zeljkovranjes%2Fark-orange" height="20">](https://github.com/zeljkovranjes/brute)
+[<img alt="version" src="https://img.shields.io/badge/%20Release-v0.1.0-green" height="20">](/)
 
-## Technical Breakdown
-If you're interested in my thought process while I was building out the foundation of this project, you can view the post I made about this project on my substack [here](https://chomnr.substack.com/p/project-breakdown-ark)
+Ark is a monolithic backend application written in Rust that focuses heavily on Identity and Access Management (IAM).
+While it was originally intended to be closed-source for a side project, it has been released publicly.
+
+This project is not production-ready.
+Some fundamental components are missing, and the frontend has not been implemented yet. Use this project as a foundation, not a drop-in solution.
+
+- **IAM-First Design** — Ark is built around roles, permissions, and OAuth-based identity from the ground up.
+
+- **Explicit Authorization Model** — Roles and permissions must exist before they can be linked. Nothing is implicitly created.
+
+- **Monolithic Architecture** — All services live in a single application. No microservices, no network overhead.
+
+- **OAuth Integration** — Supports OAuth providers (example: Discord) for authentication and user provisioning.
 
 ## Installation
 
-This section guides you through the process of installing the necessary tools and building the project.
+This section walks through setting up Ark locally for development and experimentation.
 
-### Prerequisites
+## Prerequisites
 
-Before you begin, ensure you have installed Rust, Cargo, PostgreSQL, and Redis on your system.
-
-* Rust
+Ensure the following dependencies are installed before continuing:
+* Rust (stable)
+* Cargo
 * PostgreSQL
 * Redis
-* OAuth Provider (ex: Discord)
+* OAuth Provider (e.g. Discord)
 
-### From the source
-```bash
-git clone https://github.com/notpointless/ark.git
+### From Source
+```
+git clone https://github.com/zeljkovranjes/ark.git
 cd ark
 cargo build
 cargo run
 ```
 
-### Setting environment variables
-```bat
-SET PG_HOST=
-SET PG_USER=
-SET PG_PASSWORD=
-SET PG_DBNAME=
-SET REDIS_HOST=
-SET REDIS_USER=
-SET REDIS_PASSWORD=
-SET REDIS_DBNAME=
-SET DISCORD_CLIENT_ID=
-SET DISCORD_CLIENT_SECRET=
-SET DISCORD_AUTH_URL=https://discord.com/oauth2/authorize
-SET DISCORD_TOKEN_URL=https://discord.com/api/oauth2/token
-SET DISCORD_REVOCATION_URL=https://discord.com/api/oauth2/token/revoke
-SET OAUTH2_REDIRECT_URL=http://localhost:3000/auth/callback
-SET COOKIE_ENCRYPTION_KEY=TESTKEY1324E31324123421244123TESTFEY1214E31324123421244123TESTKEY1224E31324123421244123
+### Environment Variables
 ```
-## IAM
-Some simple documentation for some of the functions for the IAM; all are commented. Note roles and permissions are case-sensitive.
+# PostgreSQL
+PG_HOST=
+PG_USER=
+PG_PASSWORD=
+PG_DBNAME=
 
-### Creating a user
-If the permissions or roles added to a user do not already exist, they will not be added to the user.
+# Redis
+REDIS_HOST=
+REDIS_USER=
+REDIS_PASSWORD=
+REDIS_DBNAME=
+
+# OAuth (Discord example)
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+DISCORD_AUTH_URL=https://discord.com/oauth2/authorize
+DISCORD_TOKEN_URL=https://discord.com/api/oauth2/token
+DISCORD_REVOCATION_URL=https://discord.com/api/oauth2/token/revoke
+
+# OAuth redirect
+OAUTH2_REDIRECT_URL=http://localhost:3000/auth/callback
+
+# Security
+COOKIE_ENCRYPTION_KEY=CHANGE_THIS_TO_A_LONG_RANDOM_KEY
+```
+
+## IAM Overview
+Ark’s IAM system is intentionally strict.
+Roles and permissions are *case-sensitive*, and entities must exist before being referenced.
+
+All IAM-related logic is commented in the source code.
+
+### Creating a User
 ```rust
 let user = User::builder()
-        .oauth_id("oauth_id")
-        .oauth_provider("discord")
-        .username("hello")
-        .permission(vec!["special.permission".to_string()])
-        .role(vec!["Admin".to_string()])
-        .build();
+    .oauth_id("oauth_id")
+    .oauth_provider("discord")
+    .username("hello")
+    .permission(vec!["special.permission".to_string()])
+    .role(vec!["Admin".to_string()])
+    .build();
+
 UserManager::create_user(user).unwrap();
 ```
 
-### Creating a role
+### Creating a Role
 ```rust
 let role = Role::builder()
-        .role_name("Admin")
-        .build();
+    .role_name("Admin")
+    .build();
+
 RoleManager::create_role(role).unwrap();
 ```
 
-### Updating a role
+### Updating a Role
 ```rust
-RoleManager::update_role("dd2546c3-e34a-4fcb-9b12-1a96eb6873e3", "role_name", "Admin");
-RoleManager::update_role("Admin", "role_name", "Administrator");
+RoleManager::update_role(
+    "dd2546c3-e34a-4fcb-9b12-1a96eb6873e3",
+    "role_name",
+    "Admin"
+);
+
+RoleManager::update_role(
+    "Admin",
+    "role_name",
+    "Administrator"
+);
 ```
 
-### Linking a permission to a role.
+### Linking a Permission to a Role
 ```rust
 RoleManager::link_permission_to_role("Admin", "ban.user").unwrap();
 ```
 
-### Creating a permission
+### Creating a Permission
 ```rust
-let role = Permission::builder()
-        .permission_name("Ban User")
-        .permission_key("ban.user")
-        .build();
-PermissionManager::create_permission(role).unwrap();
+let permission = Permission::builder()
+    .permission_name("Ban User")
+    .permission_key("ban.user")
+    .build();
+
+PermissionManager::create_permission(permission).unwrap();
 ```
 
-### Updating a permission
+### Updating a Permission
 ```rust
-PermissionManager::update_permission("dd2546c3-e34a-4fcb-9b12-1a96eb6873e3", "permission_name", "admin ban user.");
-PermissionManager::update_permission("admin ban user.", "permission_key", "admin.ban.key");
+PermissionManager::update_permission(
+    "dd2546c3-e34a-4fcb-9b12-1a96eb6873e3",
+    "permission_name",
+    "admin ban user."
+);
+
+PermissionManager::update_permission(
+    "admin ban user.",
+    "permission_key",
+    "admin.ban.key"
+);
 ```
 
-### Tests
-None at the moment.
+## Tests
+There are currently **no automated tests**.
+This project is still under active development and should be treated as experimental.
+
+## Final Notes
+Ark is meant to be extended, not deployed as-is.
+If you plan on using this as a base for a real application, expect to add:
+* Migrations
+* Tests
+* Frontend
+* Deployment tooling
+* Security hardening
